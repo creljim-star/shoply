@@ -1,6 +1,6 @@
 /* Service worker: caché básica para instalar la PWA + notificaciones push. */
 
-const CACHE = 'compra-v12';
+const CACHE = 'compra-v13';
 const ASSETS = [
   '/',
   '/index.html',

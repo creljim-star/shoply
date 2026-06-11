@@ -129,6 +129,17 @@ html, body {
 .bizum-note strong { font-weight: 800; letter-spacing: 0.3px; }
 .name-error { color: var(--orange); font-size: 0.85rem; min-height: 1.05em; margin: 6px 0 0; }
 
+/* Cita de coña */
+.joke-quote { margin: 14px auto 0; max-width: 340px; line-height: 1.45; }
+.joke-text { display: block; font-style: italic; font-weight: 800; font-size: 0.9rem; }
+.joke-sign { display: block; font-style: italic; font-weight: 600; font-size: 0.82rem; margin-top: 4px; opacity: 0.9; }
+/* Sobre el degradado del login -> blanco */
+.login-foot .joke-text { color: #fff; }
+.login-foot .joke-sign { color: rgba(255, 255, 255, 0.92); }
+/* En el pie de la app -> azul marino */
+.app-joke .joke-text { color: var(--navy); }
+.app-joke .joke-sign { color: var(--muted); }
+
 .card {
   background: var(--card);
   border-radius: var(--radius);
