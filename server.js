@@ -128,11 +128,44 @@ function cleanPrice(value) {
 // ---------------------------------------------------------------------------
 // Compras (trips)
 // ---------------------------------------------------------------------------
+// Partes de la fecha en horario de España (Europe/Madrid), para que el "día"
+// coincida con el del usuario aunque el servidor esté en UTC.
+function madridParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const get = (t) => parts.find((p) => p.type === t).value;
+  return { dd: get('day'), mm: get('month'), yyyy: get('year') };
+}
 // Fecha "dd/mm/aaaa" para el título de la compra.
-function fechaES(d = new Date()) {
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}/${d.getFullYear()}`;
+function fechaES(date = new Date()) {
+  const { dd, mm, yyyy } = madridParts(date);
+  return `${dd}/${mm}/${yyyy}`;
+}
+// Fecha "aaaa-mm-dd" (para comparar días).
+function fechaISO(date = new Date()) {
+  const { dd, mm, yyyy } = madridParts(date);
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Borra las compras VACÍAS de días anteriores (las de hoy se conservan aunque
+// estén vacías). Así, si un día no se añade nada, esa lista desaparece al
+// día siguiente en lugar de acumularse.
+function cleanupEmptyTrips() {
+  const today = fechaISO();
+  const before = db.trips.length;
+  db.trips = db.trips.filter((t) => {
+    const vacia = !Array.isArray(t.items) || t.items.length === 0;
+    const deDiaAnterior = (t.date || '') < today;
+    return !(vacia && deDiaAnterior);
+  });
+  if (db.trips.length !== before) {
+    console.log('[db] Limpieza:', before - db.trips.length, 'lista(s) vacía(s) de días anteriores borrada(s).');
+    saveDb();
+  }
 }
 
 // Crea una compra activa nueva (opcionalmente con artículos ya existentes).
@@ -141,7 +174,7 @@ function makeTrip(items = []) {
   return {
     id: nextId(),
     title: 'COMPRA ' + fechaES(now),
-    date: now.toISOString().slice(0, 10), // aaaa-mm-dd
+    date: fechaISO(now), // aaaa-mm-dd (horario de España)
     status: 'active',
     createdAt: now.toISOString(),
     archivedAt: null,
@@ -150,7 +183,9 @@ function makeTrip(items = []) {
 }
 
 // Devuelve la compra activa; si no hay ninguna, la crea.
+// Antes limpia las listas vacías de días anteriores.
 function getActiveTrip() {
+  cleanupEmptyTrips();
   let trip = db.trips.find((t) => t.status === 'active');
   if (!trip) {
     trip = makeTrip();
@@ -361,7 +396,7 @@ app.post('/api/admin/new-trip', requireAdmin, (req, res) => {
   // Estaba vacía: solo refrescamos su fecha a hoy.
   const now = new Date();
   current.title = 'COMPRA ' + fechaES(now);
-  current.date = now.toISOString().slice(0, 10);
+  current.date = fechaISO(now);
   current.createdAt = now.toISOString();
   saveDb();
   res.json({ trip: current, archived: null });
@@ -434,6 +469,7 @@ async function main() {
   const m = await store.init();
   console.log(`[store] Almacenamiento: ${m === 'postgres' ? 'PostgreSQL (permanente)' : 'fichero local'}`);
   db = normalizeDb(await store.load());
+  cleanupEmptyTrips(); // borra listas vacías de días anteriores al arrancar
   resolveVapid();
 
   app.listen(PORT, () => {
