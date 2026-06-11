@@ -688,5 +688,6 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW:', e));
 }
 
-if (state.name) showApp();
-else showNameScreen();
+// Al abrir la app siempre se muestra el login. Si ya tienes nombre guardado,
+// aparece escrito y solo hay que pulsar "Entrar".
+showNameScreen();

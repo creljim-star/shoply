@@ -136,9 +136,6 @@ html, body {
 /* Sobre el degradado del login -> blanco */
 .login-foot .joke-text { color: #fff; }
 .login-foot .joke-sign { color: rgba(255, 255, 255, 0.92); }
-/* En el pie de la app -> azul marino */
-.app-joke .joke-text { color: var(--navy); }
-.app-joke .joke-sign { color: var(--muted); }
 
 .card {
   background: var(--card);
