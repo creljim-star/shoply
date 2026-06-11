@@ -86,11 +86,43 @@
     <div class="modal-card">
       <h2>🔒 Modo Admin</h2>
       <p class="muted">Solo para quien va a la compra. Introduce la contraseña.</p>
-      <input id="admin-password" type="password" placeholder="Contraseña" autocomplete="current-password" />
+      <div class="pw-wrap">
+        <input id="admin-password" type="text" placeholder="Contraseña" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <button id="pw-toggle" type="button" class="pw-toggle" aria-label="Mostrar u ocultar contraseña">🙈</button>
+      </div>
       <p id="admin-error" class="admin-error"></p>
       <div class="modal-actions">
         <button id="admin-cancel" class="btn btn-ghost">Cancelar</button>
         <button id="admin-login" class="btn btn-primary">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teclado de precios (calculadora) -->
+  <div id="price-modal" class="modal hidden">
+    <div class="modal-card pad-card">
+      <div class="pad-head">
+        <span id="pad-title" class="pad-title">Precio</span>
+        <button id="pad-cancel" class="pad-x" aria-label="Cerrar">✕</button>
+      </div>
+      <div id="pad-display" class="pad-display">0 €</div>
+      <div class="pad-grid">
+        <button class="pad-key" data-k="1">1</button>
+        <button class="pad-key" data-k="2">2</button>
+        <button class="pad-key" data-k="3">3</button>
+        <button class="pad-key" data-k="4">4</button>
+        <button class="pad-key" data-k="5">5</button>
+        <button class="pad-key" data-k="6">6</button>
+        <button class="pad-key" data-k="7">7</button>
+        <button class="pad-key" data-k="8">8</button>
+        <button class="pad-key" data-k="9">9</button>
+        <button class="pad-key pad-comma" data-k=",">,</button>
+        <button class="pad-key" data-k="0">0</button>
+        <button class="pad-key pad-back" data-k="back">⌫</button>
+      </div>
+      <div class="modal-actions">
+        <button id="pad-clear" class="btn btn-ghost">Borrar</button>
+        <button id="pad-save" class="btn btn-primary">Guardar precio</button>
       </div>
     </div>
   </div>

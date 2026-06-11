@@ -192,9 +192,9 @@ function renderItem(it) {
 
   let priceHtml = '';
   if (admin) {
-    priceHtml = `<input class="price-input" type="text" inputmode="decimal"
-      value="${it.price != null ? String(it.price).replace('.', ',') : ''}"
-      placeholder="0,00 €" data-action="price" aria-label="Precio" />`;
+    // Botón que abre el teclado de precios (calculadora).
+    const label = it.price != null ? euros(it.price) : '➕ €';
+    priceHtml = `<button class="price-btn ${it.price != null ? 'has-price' : ''}" data-action="pricepad">${label}</button>`;
   } else if (it.price != null) {
     priceHtml = `<span class="price-tag">${euros(it.price)}</span>`;
   }
@@ -250,6 +250,65 @@ async function deleteItem(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Teclado de precios (calculadora)
+// ---------------------------------------------------------------------------
+const pricePad = { id: null, value: '' };
+
+function openPricePad(id) {
+  const trip = selectedTrip();
+  const item = trip && trip.items.find((i) => i.id === id);
+  if (!item) return;
+  pricePad.id = id;
+  pricePad.value = item.price != null ? String(item.price).replace('.', ',') : '';
+  $('#pad-title').textContent = item.text;
+  renderPad();
+  $('#price-modal').classList.remove('hidden');
+}
+
+function closePricePad() {
+  $('#price-modal').classList.add('hidden');
+  pricePad.id = null;
+}
+
+function renderPad() {
+  $('#pad-display').textContent = (pricePad.value || '0') + ' €';
+}
+
+function padKey(k) {
+  let v = pricePad.value;
+  if (k === 'back') {
+    v = v.slice(0, -1);
+  } else if (k === ',') {
+    if (!v.includes(',')) v = (v === '' ? '0' : v) + ',';
+  } else {
+    // dígito: máximo 2 decimales y un tamaño razonable
+    if (v.includes(',') && v.split(',')[1].length >= 2) return;
+    if (v.replace(',', '').length >= 6) return;
+    if (v === '0') v = ''; // evitar ceros a la izquierda
+    v += k;
+  }
+  pricePad.value = v;
+  renderPad();
+}
+
+async function savePricePad() {
+  const id = pricePad.id;
+  closePricePad();
+  if (id) await setPrice(id, pricePad.value);
+}
+
+// ---------------------------------------------------------------------------
+// Mostrar / ocultar contraseña
+// ---------------------------------------------------------------------------
+function togglePassword() {
+  const inp = $('#admin-password');
+  const showing = inp.type === 'text';
+  inp.type = showing ? 'password' : 'text';
+  $('#pw-toggle').textContent = showing ? '👁️' : '🙈';
+  inp.focus();
+}
+
+// ---------------------------------------------------------------------------
 // Acciones de Admin sobre la compra
 // ---------------------------------------------------------------------------
 async function finishShopping() {
@@ -299,6 +358,8 @@ function openAdminModal() {
   }
   $('#admin-error').textContent = '';
   $('#admin-password').value = '';
+  $('#admin-password').type = 'text'; // visible por defecto
+  $('#pw-toggle').textContent = '🙈';
   $('#admin-modal').classList.remove('hidden');
   setTimeout(() => $('#admin-password').focus(), 50);
 }
@@ -495,22 +556,26 @@ $('#lists').addEventListener('click', (e) => {
   const id = row.dataset.id;
   if (action === 'toggle') toggleChecked(id, row.classList.contains('checked'));
   if (action === 'del') deleteItem(id);
+  if (action === 'pricepad') openPricePad(id);
 });
 
-// Guardar precio al salir del campo o pulsar Enter.
-$('#lists').addEventListener(
-  'blur',
-  (e) => {
-    if (e.target.dataset.action === 'price') {
-      const row = e.target.closest('.item');
-      if (row) setPrice(row.dataset.id, e.target.value);
-    }
-  },
-  true
-);
-$('#lists').addEventListener('keydown', (e) => {
-  if (e.target.dataset.action === 'price' && e.key === 'Enter') e.target.blur();
+// Teclado de precios.
+$('#pad-display').parentElement.querySelector('.pad-grid').addEventListener('click', (e) => {
+  const key = e.target.closest('.pad-key');
+  if (key) padKey(key.dataset.k);
 });
+$('#pad-save').addEventListener('click', savePricePad);
+$('#pad-clear').addEventListener('click', () => {
+  pricePad.value = '';
+  renderPad();
+});
+$('#pad-cancel').addEventListener('click', closePricePad);
+$('#price-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'price-modal') closePricePad();
+});
+
+// Mostrar / ocultar contraseña.
+$('#pw-toggle').addEventListener('click', togglePassword);
 
 $('#alert-btn').addEventListener('click', sendAlert);
 $('#notif-btn').addEventListener('click', enableNotifications);
@@ -529,11 +594,10 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && state.name) loadState();
 });
 
-// Sincronización periódica (cada 5 s). No refresca mientras se edita un precio.
+// Sincronización periódica (cada 5 s). No refresca mientras el teclado de precios está abierto.
 setInterval(() => {
-  if (state.name && !document.hidden && document.activeElement?.dataset?.action !== 'price') {
-    loadState();
-  }
+  const padOpen = !$('#price-modal').classList.contains('hidden');
+  if (state.name && !document.hidden && !padOpen) loadState();
 }, 5000);
 
 // ---------------------------------------------------------------------------

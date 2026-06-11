@@ -319,6 +319,22 @@ input.price-input {
   text-align: right;
 }
 input.price-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(22,163,74,0.15); }
+
+/* Botón de precio (abre el teclado) */
+.price-btn {
+  flex: 0 0 auto;
+  min-width: 78px;
+  padding: 9px 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+}
+.price-btn.has-price { border-style: solid; border-color: var(--green); color: var(--green-dark); }
+.price-btn:active { transform: scale(0.97); }
 .item .del {
   background: none; border: none; cursor: pointer;
   color: var(--muted); font-size: 1.2rem; padding: 4px 6px;
@@ -373,3 +389,51 @@ input.price-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba
 .admin-error { color: var(--orange); font-size: 0.9rem; min-height: 1.1em; margin: 0 0 8px; }
 .modal-actions { display: flex; gap: 10px; }
 .modal-actions .btn { flex: 1; }
+
+/* Mostrar/ocultar contraseña */
+.pw-wrap { position: relative; margin: 16px 0 6px; }
+.pw-wrap input { margin: 0; padding-right: 52px; }
+.pw-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 6px 8px;
+  line-height: 1;
+}
+
+/* Teclado de precios (calculadora) */
+.pad-card { max-width: 340px; }
+.pad-head { display: flex; align-items: center; margin-bottom: 10px; }
+.pad-title { font-weight: 700; font-size: 1.1rem; flex: 1; word-break: break-word; }
+.pad-x { background: none; border: none; font-size: 1.1rem; color: var(--muted); cursor: pointer; padding: 4px 8px; }
+.pad-display {
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 16px 18px;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--navy);
+  text-align: right;
+  margin-bottom: 14px;
+  min-height: 1.2em;
+}
+.pad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pad-key {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--navy);
+  cursor: pointer;
+  transition: background 0.1s ease, transform 0.05s ease;
+}
+.pad-key:active { transform: scale(0.95); background: #ecfdf5; }
+.pad-back { color: var(--orange); }
+.pad-card .modal-actions { margin-top: 16px; }
