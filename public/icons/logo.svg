@@ -1,35 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 560" width="512" height="560" role="img" aria-label="Shoply">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 95 392 470" width="392" height="470" role="img" aria-label="Shoply">
   <defs>
-    <linearGradient id="cart" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="cartFull" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#19c98a"/>
       <stop offset="1" stop-color="#12b5b0"/>
     </linearGradient>
   </defs>
-
-  <!-- Productos asomando del carrito -->
-  <!-- Naranja -->
-  <circle cx="206" cy="178" r="30" fill="#ff7a3d"/>
-  <path d="M206 150 q14 -16 30 -10 q-10 14 -30 12 Z" fill="#2bb673"/>
-  <!-- Brick / cartón -->
-  <rect x="246" y="138" width="46" height="70" rx="8" fill="#f6b93b" transform="rotate(8 269 173)"/>
-  <!-- Hoja de lechuga -->
-  <path d="M312 196 q6 -52 46 -64 q10 40 -16 64 Z" fill="#5fbf3e"/>
-  <path d="M334 188 q4 -28 20 -40" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
-
+  <!-- Productos -->
+  <rect x="256" y="113" width="67" height="113" rx="15" fill="#f6b93b"/>
+  <circle cx="215" cy="174" r="44" fill="#ff7a3d"/>
+  <ellipse cx="232" cy="128" rx="18" ry="10" fill="#2bb673"/>
+  <ellipse cx="353" cy="159" rx="26" ry="51" fill="#5fbf3e"/>
   <!-- Carrito -->
-  <path d="M104 150 h44 l40 168 h150 l34 -118 H176"
-        fill="none" stroke="url(#cart)" stroke-width="26"
+  <path d="M92 159 H148 L189 328 H353 L394 215 H174"
+        fill="none" stroke="url(#cartFull)" stroke-width="28"
         stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- Líneas tipo lista en la parte frontal -->
-  <line x1="244" y1="256" x2="320" y2="256" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
-  <line x1="252" y1="290" x2="304" y2="290" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
   <!-- Ruedas -->
-  <circle cx="232" cy="372" r="24" fill="#1e2a3a"/>
-  <circle cx="320" cy="372" r="24" fill="#1e2a3a"/>
-
+  <circle cx="230" cy="379" r="27" fill="#1e2a3a"/>
+  <circle cx="323" cy="379" r="27" fill="#1e2a3a"/>
   <!-- Wordmark -->
-  <text x="256" y="500" text-anchor="middle"
-        font-family="'Segoe UI', Roboto, Arial, sans-serif" font-weight="800" font-size="120" letter-spacing="-2">
+  <text x="256" y="505" text-anchor="middle"
+        font-family="'Segoe UI', Roboto, Arial, sans-serif" font-weight="800" font-size="118" letter-spacing="-2">
     <tspan fill="#1e2a3a">Shop</tspan><tspan fill="#16c784">ly</tspan>
   </text>
 </svg>

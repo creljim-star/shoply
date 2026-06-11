@@ -1,8 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="92" fill="#16a34a"/>
-  <g fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M104 150 h44 l40 168 h150 l34 -118 H176"/>
-  </g>
-  <circle cx="232" cy="372" r="26" fill="#ffffff"/>
-  <circle cx="320" cy="372" r="26" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Shoply">
+  <defs>
+    <linearGradient id="cartIcon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#19c98a"/>
+      <stop offset="1" stop-color="#12b5b0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="92" fill="#ffffff"/>
+  <!-- Productos -->
+  <rect x="256" y="113" width="67" height="113" rx="15" fill="#f6b93b"/>
+  <circle cx="215" cy="174" r="44" fill="#ff7a3d"/>
+  <ellipse cx="232" cy="128" rx="18" ry="10" fill="#2bb673"/>
+  <ellipse cx="353" cy="159" rx="26" ry="51" fill="#5fbf3e"/>
+  <!-- Carrito -->
+  <path d="M92 159 H148 L189 328 H353 L394 215 H174"
+        fill="none" stroke="url(#cartIcon)" stroke-width="28"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Ruedas -->
+  <circle cx="230" cy="379" r="27" fill="#1e2a3a"/>
+  <circle cx="323" cy="379" r="27" fill="#1e2a3a"/>
 </svg>
