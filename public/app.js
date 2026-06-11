@@ -36,6 +36,7 @@ function euros(n) {
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
   if (state.adminToken) headers['x-admin-token'] = state.adminToken;
+  if (state.name) headers['x-user'] = encodeURIComponent(state.name);
   const res = await fetch(path, { ...opts, headers });
   if (!res.ok) {
     const err = new Error('Error ' + res.status);
@@ -195,7 +196,9 @@ function renderItem(it) {
     priceHtml = `<span class="price-tag">${euros(it.price)}</span>`;
   }
 
-  const delBtn = editable ? `<button class="del" data-action="del" aria-label="Borrar">🗑️</button>` : '';
+  // Borrar: el admin puede con todo; cada persona solo con lo suyo.
+  const canDelete = editable && (state.isAdmin || it.person === state.name);
+  const delBtn = canDelete ? `<button class="del" data-action="del" aria-label="Borrar">🗑️</button>` : '';
 
   return `
     <div class="item ${cls.join(' ')}" data-id="${it.id}">
@@ -235,7 +238,11 @@ async function setPrice(id, value) {
 }
 
 async function deleteItem(id) {
-  await api('/api/items/' + id, { method: 'DELETE' });
+  try {
+    await api('/api/items/' + id, { method: 'DELETE' });
+  } catch (e) {
+    toast('Solo puedes borrar tus propios productos.');
+  }
   await loadState();
 }
 
@@ -407,11 +414,20 @@ function showNameScreen() {
   $('#name-input').focus();
 }
 function saveName() {
-  const v = $('#name-input').value.trim();
+  const v = $('#name-input').value.trim().replace(/\s+/g, ' ');
+  const err = $('#name-error');
   if (!v) {
+    if (err) err.textContent = 'Escribe tu nombre y tu primer apellido.';
     $('#name-input').focus();
     return;
   }
+  // Debe incluir al menos nombre y primer apellido (2 palabras).
+  if (v.split(' ').length < 2) {
+    if (err) err.textContent = 'Pon tu nombre y tu primer apellido (ej. Carlos Relaño).';
+    $('#name-input').focus();
+    return;
+  }
+  if (err) err.textContent = '';
   state.name = v;
   localStorage.setItem('compra:name', v);
   showApp();

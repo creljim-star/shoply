@@ -201,6 +201,15 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// Nombre de quien hace la petición (se envía codificado en la cabecera x-user).
+function currentUser(req) {
+  try {
+    return cleanName(decodeURIComponent(req.get('x-user') || ''));
+  } catch (e) {
+    return '';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // App Express
 // ---------------------------------------------------------------------------
@@ -283,12 +292,19 @@ app.patch('/api/items/:id', (req, res) => {
 });
 
 // Borrar un artículo de la compra activa.
+// Permitido si eres Admin, o si el artículo es tuyo (lo añadiste tú).
 app.delete('/api/items/:id', (req, res) => {
   const trip = getActiveTrip();
-  const before = trip.items.length;
-  trip.items = trip.items.filter((i) => i.id !== req.params.id);
+  const item = trip.items.find((i) => i.id === req.params.id);
+  if (!item) return res.json({ removed: 0 });
+
+  if (!isAdmin(req) && item.person !== currentUser(req)) {
+    return res.status(403).json({ error: 'Solo puedes borrar tus propios productos.' });
+  }
+
+  trip.items = trip.items.filter((i) => i.id !== item.id);
   saveDb();
-  res.json({ removed: before - trip.items.length });
+  res.json({ removed: 1 });
 });
 
 // ---------------------------------------------------------------------------

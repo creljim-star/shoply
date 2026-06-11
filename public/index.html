@@ -16,11 +16,12 @@
     <div class="card name-card">
       <img class="brand-logo" src="icons/logo.png" alt="Shoply"
            onerror="if(!this.dataset.f){this.dataset.f=1;this.src='icons/logo.svg';}else{this.classList.add('logo-fallback');this.removeAttribute('src');}" />
-      <p class="muted">Escribe tu nombre para empezar</p>
-      <input id="name-input" type="text" placeholder="Tu nombre" autocomplete="name" maxlength="40" />
+      <p class="muted">Escribe tu <strong>nombre y primer apellido</strong></p>
+      <input id="name-input" type="text" placeholder="Nombre y primer apellido" autocomplete="name" maxlength="40" />
+      <p id="name-error" class="name-error"></p>
       <button id="name-save" class="btn btn-primary">Entrar</button>
     </div>
-    <p class="credit">Hecho por <strong>Carlos Relaño</strong></p>
+    <p class="credit">App creada por <strong>Carlos Relaño</strong></p>
   </div>
 
   <!-- App principal -->
@@ -72,7 +73,7 @@
         <button id="notif-btn" class="btn btn-ghost">🔔 Activar notificaciones</button>
       </div>
 
-      <footer class="app-credit">Shoply · hecho por <strong>Carlos Relaño</strong></footer>
+      <footer class="app-credit">Shoply · app creada por <strong>Carlos Relaño</strong></footer>
     </main>
   </div>
 

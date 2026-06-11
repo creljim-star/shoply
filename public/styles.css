@@ -4,6 +4,7 @@
   --green-dark: #0ca678;
   --teal: #15bdb0;
   --navy: #1e2a3a;
+  --cyan: #06b6d4;
   --brand-grad: linear-gradient(135deg, #16c784 0%, #14b8b0 100%);
   --orange: #ea580c;
   --bg: #f1f5f9;
@@ -52,7 +53,8 @@ html, body {
 .name-card h1 { margin: 8px 0 4px; font-size: 1.5rem; }
 .name-card input { margin: 18px 0 12px; }
 .credit { margin-top: 18px; color: var(--muted); font-size: 0.85rem; text-align: center; }
-.credit strong { color: var(--navy); }
+.credit strong { color: var(--cyan); font-weight: 800; letter-spacing: 0.2px; }
+.name-error { color: var(--orange); font-size: 0.85rem; min-height: 1.05em; margin: 6px 0 0; }
 
 .card {
   background: var(--card);
@@ -315,7 +317,7 @@ input.price-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba
 
 .footer-actions { display: flex; gap: 8px; margin: 20px 0 16px; }
 .app-credit { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 8px 0 40px; }
-.app-credit strong { color: var(--navy); }
+.app-credit strong { color: var(--cyan); font-weight: 800; }
 
 /* ---------- Toast ---------- */
 .toast {
