@@ -1,0 +1,9 @@
+node_modules/
+data/data.json
+.env
+*.log
+.DS_Store
+
+# Local del equipo / no relacionado con la app
+.claude/
+*.xlsx

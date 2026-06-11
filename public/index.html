@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#16a34a" />
+  <title>Shoply</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Pantalla para escribir el nombre -->
+  <div id="name-screen" class="screen hidden">
+    <div class="card name-card">
+      <img class="brand-logo" src="icons/logo.png" alt="Shoply"
+           onerror="if(!this.dataset.f){this.dataset.f=1;this.src='icons/logo.svg';}else{this.classList.add('logo-fallback');this.removeAttribute('src');}" />
+      <p class="muted">Escribe tu nombre para empezar</p>
+      <input id="name-input" type="text" placeholder="Tu nombre" autocomplete="name" maxlength="40" />
+      <button id="name-save" class="btn btn-primary">Entrar</button>
+    </div>
+    <p class="credit">Hecho por <strong>Carlos Relaño</strong></p>
+  </div>
+
+  <!-- App principal -->
+  <div id="app-screen" class="screen hidden">
+    <header class="topbar">
+      <div class="topbar-title">
+        <img class="topbar-logo" src="icons/logo-mark.png" alt=""
+             onerror="if(!this.dataset.f){this.dataset.f=1;this.src='icons/logo-mark.svg';}else{this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🛒'}));}" />
+        <span>Shoply</span>
+      </div>
+      <div class="topbar-actions">
+        <button id="admin-btn" class="icon-btn" title="Modo Admin">🔒</button>
+        <button id="who-btn" class="who" title="Cambiar nombre"></button>
+      </div>
+    </header>
+
+    <!-- Barra de modo Admin (oculta hasta entrar) -->
+    <div id="admin-bar" class="admin-bar hidden">
+      <div class="admin-bar-row">
+        <span class="admin-badge">🛒 Modo compra</span>
+        <span id="admin-total" class="admin-total">Total: 0,00 €</span>
+        <button id="admin-logout" class="link-btn">Salir</button>
+      </div>
+      <button id="finish-btn" class="btn btn-finish">✅ Marcar todo como comprado</button>
+    </div>
+
+    <main>
+      <button id="alert-btn" class="btn btn-alert">📣 Voy a la compra — avisar a todos</button>
+      <p id="alert-status" class="alert-status muted"></p>
+
+      <form id="add-form" class="add-form">
+        <input id="item-input" type="text" placeholder="¿Qué necesitas? (ej. Leche)" maxlength="200" autocomplete="off" />
+        <button type="submit" class="btn btn-primary btn-add" aria-label="Añadir">＋</button>
+      </form>
+
+      <div id="lists" class="lists"></div>
+
+      <div class="footer-actions">
+        <button id="notif-btn" class="btn btn-ghost">🔔 Activar notificaciones</button>
+        <button id="clear-bought-btn" class="btn btn-ghost hidden">🧹 Quitar comprados</button>
+      </div>
+
+      <footer class="app-credit">Shoply · hecho por <strong>Carlos Relaño</strong></footer>
+    </main>
+  </div>
+
+  <!-- Modal de contraseña de Admin -->
+  <div id="admin-modal" class="modal hidden">
+    <div class="modal-card">
+      <h2>🔒 Modo Admin</h2>
+      <p class="muted">Solo para quien va a la compra. Introduce la contraseña.</p>
+      <input id="admin-password" type="password" placeholder="Contraseña" autocomplete="current-password" />
+      <p id="admin-error" class="admin-error"></p>
+      <div class="modal-actions">
+        <button id="admin-cancel" class="btn btn-ghost">Cancelar</button>
+        <button id="admin-login" class="btn btn-primary">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aviso emergente al recibir la alerta con la app abierta -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

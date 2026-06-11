@@ -1,0 +1,27 @@
+# Blueprint de Render: crea el servicio web automáticamente.
+# En Render: New + > Blueprint > conecta este repositorio.
+services:
+  - type: web
+    name: shoply
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: VAPID_SUBJECT
+        value: mailto:tu-email@example.com
+      # Contraseña del modo Admin (¡cámbiala por una tuya!)
+      - key: ADMIN_PASSWORD
+        value: shoply
+      # Las claves VAPID se generan solas la primera vez.
+      # Para que sobrevivan a los reinicios, genera un par con "npm run keys"
+      # y añádelas aquí como VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY.
+
+    # IMPORTANTE: en el plan gratuito el disco es temporal: la lista puede
+    # borrarse al reiniciar/redeplegar. Para que la lista sea permanente,
+    # añade un disco persistente (plan de pago) montado en /data y define:
+    #   DATA_FILE=/data/data.json
+    # disk:
+    #   name: datos
+    #   mountPath: /data
+    #   sizeGB: 1
