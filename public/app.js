@@ -532,7 +532,7 @@ function saveName() {
   }
   // Debe incluir al menos nombre y primer apellido (2 palabras).
   if (v.split(' ').length < 2) {
-    if (err) err.textContent = 'Pon tu nombre y tu primer apellido (ej. Carlos Relaño).';
+    if (err) err.textContent = 'Pon tu nombre y tu primer apellido (ej. Ana García).';
     $('#name-input').focus();
     return;
   }
