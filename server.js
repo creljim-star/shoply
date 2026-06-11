@@ -20,9 +20,9 @@ const crypto = require('crypto');
 const express = require('express');
 const webpush = require('web-push');
 const { ensureIcons } = require('./lib/icons');
+const store = require('./lib/store');
 
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data', 'data.json');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'shoply';
 
 // ---------------------------------------------------------------------------
@@ -36,7 +36,7 @@ let VAPID_PUBLIC_KEY = '';
 let pushEnabled = false;
 
 // ---------------------------------------------------------------------------
-// Almacenamiento simple en fichero JSON
+// Almacenamiento (PostgreSQL permanente si hay DATABASE_URL; si no, fichero)
 // ---------------------------------------------------------------------------
 /**
  * Cada "compra" (trip) es una pestaña con fecha y sus propios artículos.
@@ -45,27 +45,23 @@ let pushEnabled = false;
  */
 let db = { trips: [], subscriptions: [], vapid: null, adminTokens: [] };
 
-function loadDb() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, 'utf8');
-      const parsed = JSON.parse(raw);
-      db = {
-        trips: Array.isArray(parsed.trips) ? parsed.trips : [],
-        subscriptions: Array.isArray(parsed.subscriptions) ? parsed.subscriptions : [],
-        vapid: parsed.vapid || null,
-        adminTokens: Array.isArray(parsed.adminTokens) ? parsed.adminTokens : [],
-      };
-      // Migración: datos antiguos con lista plana (parsed.items) -> una compra activa.
-      if (!db.trips.length && Array.isArray(parsed.items) && parsed.items.length) {
-        db.trips.push(makeTrip(parsed.items));
-        console.log('[db] Migrados', parsed.items.length, 'artículos antiguos a una compra.');
-      }
-    }
-  } catch (err) {
-    console.error('[db] No se pudo leer el fichero de datos, empiezo vacío:', err.message);
-    db = { trips: [], subscriptions: [], vapid: null, adminTokens: [] };
+// Normaliza el objeto cargado y migra datos antiguos (lista plana -> compra).
+function normalizeDb(parsed) {
+  if (!parsed || typeof parsed !== 'object') {
+    return { trips: [], subscriptions: [], vapid: null, adminTokens: [] };
   }
+  const out = {
+    trips: Array.isArray(parsed.trips) ? parsed.trips : [],
+    subscriptions: Array.isArray(parsed.subscriptions) ? parsed.subscriptions : [],
+    vapid: parsed.vapid || null,
+    adminTokens: Array.isArray(parsed.adminTokens) ? parsed.adminTokens : [],
+  };
+  // Migración: datos antiguos con lista plana (parsed.items) -> una compra activa.
+  if (!out.trips.length && Array.isArray(parsed.items) && parsed.items.length) {
+    out.trips.push(makeTrip(parsed.items));
+    console.log('[db] Migrados', parsed.items.length, 'artículos antiguos a una compra.');
+  }
+  return out;
 }
 
 // Resuelve las claves VAPID y activa las notificaciones push.
@@ -99,23 +95,10 @@ function resolveVapid() {
   }
 }
 
-let saveTimer = null;
+// Guarda el estado actual (de forma perezosa, gestionado por el store).
 function saveDb() {
-  // Guardado "perezoso" para no escribir en disco en cada pulsación.
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-      fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2), 'utf8');
-    } catch (err) {
-      console.error('[db] Error guardando datos:', err.message);
-    }
-  }, 200);
+  store.save(db);
 }
-
-loadDb();
-resolveVapid();
 
 // ---------------------------------------------------------------------------
 // Utilidades
@@ -242,7 +225,7 @@ app.get('/api/state', (req, res) => {
       return (b.archivedAt || b.createdAt).localeCompare(a.archivedAt || a.createdAt);
     })
     .map((t) => ({ ...t, total: tripTotal(t) }));
-  res.json({ trips, activeId: active.id, pushEnabled });
+  res.json({ trips, activeId: active.id, pushEnabled, storage: store.getMode() });
 });
 
 // Añadir un artículo a la compra activa.
@@ -445,7 +428,23 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🛒 Shoply escuchando en http://localhost:${PORT}`);
-  console.log(`   Modo Admin con contraseña: "${ADMIN_PASSWORD}" (cámbiala con ADMIN_PASSWORD)\n`);
+// ---------------------------------------------------------------------------
+// Arranque
+// ---------------------------------------------------------------------------
+async function main() {
+  const m = await store.init();
+  console.log(`[store] Almacenamiento: ${m === 'postgres' ? 'PostgreSQL (permanente)' : 'fichero local'}`);
+  db = normalizeDb(await store.load());
+  resolveVapid();
+
+  app.listen(PORT, () => {
+    console.log(`\n🛒 Shoply escuchando en http://localhost:${PORT}`);
+    console.log(`   Modo Admin con contraseña: "${ADMIN_PASSWORD}" (cámbiala con ADMIN_PASSWORD)`);
+    console.log(`   Datos: ${m === 'postgres' ? 'PostgreSQL permanente ✅' : 'fichero local (temporal)'}\n`);
+  });
+}
+
+main().catch((err) => {
+  console.error('[fatal] No se pudo iniciar el servidor:', err);
+  process.exit(1);
 });
