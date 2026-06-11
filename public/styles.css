@@ -131,8 +131,8 @@ html, body {
 
 /* Cita de coña */
 .joke-quote { margin: 14px auto 0; max-width: 340px; line-height: 1.45; }
-.joke-text { display: block; font-style: italic; font-weight: 800; font-size: 0.9rem; }
-.joke-sign { display: block; font-style: italic; font-weight: 600; font-size: 0.82rem; margin-top: 4px; opacity: 0.9; }
+.joke-text { font-style: italic; font-weight: 800; font-size: 0.9rem; }
+.joke-sign { font-style: italic; font-weight: 600; font-size: 0.82rem; margin-left: 5px; opacity: 0.9; white-space: nowrap; }
 /* Sobre el degradado del login -> blanco */
 .login-foot .joke-text { color: #fff; }
 .login-foot .joke-sign { color: rgba(255, 255, 255, 0.92); }
