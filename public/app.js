@@ -322,18 +322,44 @@ async function finishShopping() {
   }
 }
 
-async function deleteTrip(id) {
+async function deleteTrip(id, skipConfirm) {
   const trip = state.trips.find((t) => t.id === id);
   const name = trip ? trip.title : 'esta compra';
-  if (!confirm(`¿Borrar "${name}" del historial?\nNo se puede deshacer.`)) return;
+  if (!skipConfirm && !confirm(`¿Borrar "${name}" del historial?\nNo se puede deshacer.`)) return;
   try {
     await api('/api/trips/' + id, { method: 'DELETE' });
     state.selectedId = null; // volver a la compra activa
     await loadState();
-    toast('🗑️ Compra borrada del historial.');
+    toast('🗑️ Lista borrada.');
   } catch (e) {
-    toast('No se pudo borrar la compra.');
+    toast('No se pudo borrar (¿es la compra activa?).');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Mantener pulsada una pestaña -> menú para borrar la lista
+// ---------------------------------------------------------------------------
+const tabMenu = { id: null };
+
+function openTabMenu(id) {
+  if (!state.isAdmin) {
+    toast('🔒 Solo el admin puede borrar listas.');
+    return;
+  }
+  const trip = state.trips.find((t) => t.id === id);
+  if (!trip) return;
+  tabMenu.id = id;
+  $('#tab-menu-title').textContent = trip.title;
+  const isActive = id === state.activeId;
+  $('#tab-menu-note').classList.toggle('hidden', !isActive);
+  $('#tab-menu-delete').classList.toggle('hidden', isActive);
+  $('#tab-menu').classList.remove('hidden');
+  if (navigator.vibrate) navigator.vibrate(15); // vibración de confirmación
+}
+
+function closeTabMenu() {
+  $('#tab-menu').classList.add('hidden');
+  tabMenu.id = null;
 }
 
 async function newTrip() {
@@ -539,12 +565,61 @@ $('#add-form').addEventListener('submit', (e) => {
   input.focus();
 });
 
-// Pestañas de compras.
-$('#tabs').addEventListener('click', (e) => {
+// Pestañas de compras: tocar = seleccionar; mantener pulsado = menú borrar.
+const tabsEl = $('#tabs');
+let lpTimer = null;
+let lpFired = false;
+let lpStart = { x: 0, y: 0 };
+
+function cancelLongPress() {
+  clearTimeout(lpTimer);
+  lpTimer = null;
+}
+
+tabsEl.addEventListener('pointerdown', (e) => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  lpFired = false;
+  lpStart = { x: e.clientX, y: e.clientY };
+  cancelLongPress();
+  lpTimer = setTimeout(() => {
+    lpFired = true;
+    openTabMenu(tab.dataset.trip);
+  }, 500);
+});
+tabsEl.addEventListener('pointermove', (e) => {
+  if (lpTimer && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) cancelLongPress();
+});
+tabsEl.addEventListener('pointerup', cancelLongPress);
+tabsEl.addEventListener('pointercancel', cancelLongPress);
+tabsEl.addEventListener('pointerleave', cancelLongPress);
+tabsEl.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('.tab')) e.preventDefault(); // evita el menú nativo al mantener pulsado
+});
+
+tabsEl.addEventListener('click', (e) => {
   const btn = e.target.closest('.tab');
   if (!btn) return;
+  if (lpFired) {
+    // Fue una pulsación larga: no seleccionamos la pestaña.
+    lpFired = false;
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   state.selectedId = btn.dataset.trip;
   render();
+});
+
+// Eventos del menú de la pestaña.
+$('#tab-menu-delete').addEventListener('click', () => {
+  const id = tabMenu.id;
+  closeTabMenu();
+  if (id) deleteTrip(id, true);
+});
+$('#tab-menu-cancel').addEventListener('click', closeTabMenu);
+$('#tab-menu').addEventListener('click', (e) => {
+  if (e.target.id === 'tab-menu') closeTabMenu();
 });
 
 // Lista: tick / borrar.
