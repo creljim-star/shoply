@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#16a34a" />
+  <meta name="theme-color" content="#14c98c" />
   <title>Shoply</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -21,7 +24,10 @@
       <p id="name-error" class="name-error"></p>
       <button id="name-save" class="btn btn-primary">Entrar</button>
     </div>
-    <p class="credit">App creada por <strong>Carlos Relaño</strong></p>
+    <div class="login-foot">
+      <p class="credit">App creada por <strong>Carlos Relaño</strong></p>
+      <span class="bizum-note">💸 Bizums al <strong>+34 628 637 302</strong></span>
+    </div>
   </div>
 
   <!-- App principal -->
@@ -77,6 +83,7 @@
         <button id="notif-btn" class="btn btn-ghost">🔔 Activar notificaciones</button>
       </div>
 
+      <div class="app-bizum">💸 Los bizums se hacen al <strong>+34 628 637 302</strong></div>
       <footer class="app-credit">Shoply · app creada por <strong>Carlos Relaño</strong></footer>
     </main>
   </div>
