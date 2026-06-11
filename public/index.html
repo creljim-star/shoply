@@ -44,12 +44,20 @@
         <span id="admin-total" class="admin-total">Total: 0,00 €</span>
         <button id="admin-logout" class="link-btn">Salir</button>
       </div>
-      <button id="finish-btn" class="btn btn-finish">✅ Marcar todo como comprado</button>
+      <div class="admin-buttons">
+        <button id="finish-btn" class="btn btn-finish">✅ Marcar todo como comprado</button>
+        <button id="new-trip-btn" class="btn btn-newtrip">🧾 Nueva compra</button>
+      </div>
     </div>
+
+    <!-- Pestañas de compras (activa + historial) -->
+    <div id="tabs" class="tabs"></div>
 
     <main>
       <button id="alert-btn" class="btn btn-alert">📣 Voy a la compra — avisar a todos</button>
       <p id="alert-status" class="alert-status muted"></p>
+
+      <p id="history-note" class="history-note hidden">👁️ Estás viendo una compra del historial (solo lectura).</p>
 
       <form id="add-form" class="add-form">
         <input id="item-input" type="text" placeholder="¿Qué necesitas? (ej. Leche)" maxlength="200" autocomplete="off" />
@@ -58,9 +66,10 @@
 
       <div id="lists" class="lists"></div>
 
+      <div id="grand-total" class="grand-total hidden"></div>
+
       <div class="footer-actions">
         <button id="notif-btn" class="btn btn-ghost">🔔 Activar notificaciones</button>
-        <button id="clear-bought-btn" class="btn btn-ghost hidden">🧹 Quitar comprados</button>
       </div>
 
       <footer class="app-credit">Shoply · hecho por <strong>Carlos Relaño</strong></footer>

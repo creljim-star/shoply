@@ -38,8 +38,12 @@ let pushEnabled = false;
 // ---------------------------------------------------------------------------
 // Almacenamiento simple en fichero JSON
 // ---------------------------------------------------------------------------
-/** @type {{ items: any[], subscriptions: any[], vapid: any, adminTokens: string[] }} */
-let db = { items: [], subscriptions: [], vapid: null, adminTokens: [] };
+/**
+ * Cada "compra" (trip) es una pestaña con fecha y sus propios artículos.
+ * Siempre hay como mucho una compra 'active'; las terminadas pasan a 'archived'.
+ * @type {{ trips: any[], subscriptions: any[], vapid: any, adminTokens: string[] }}
+ */
+let db = { trips: [], subscriptions: [], vapid: null, adminTokens: [] };
 
 function loadDb() {
   try {
@@ -47,15 +51,20 @@ function loadDb() {
       const raw = fs.readFileSync(DATA_FILE, 'utf8');
       const parsed = JSON.parse(raw);
       db = {
-        items: Array.isArray(parsed.items) ? parsed.items : [],
+        trips: Array.isArray(parsed.trips) ? parsed.trips : [],
         subscriptions: Array.isArray(parsed.subscriptions) ? parsed.subscriptions : [],
         vapid: parsed.vapid || null,
         adminTokens: Array.isArray(parsed.adminTokens) ? parsed.adminTokens : [],
       };
+      // Migración: datos antiguos con lista plana (parsed.items) -> una compra activa.
+      if (!db.trips.length && Array.isArray(parsed.items) && parsed.items.length) {
+        db.trips.push(makeTrip(parsed.items));
+        console.log('[db] Migrados', parsed.items.length, 'artículos antiguos a una compra.');
+      }
     }
   } catch (err) {
     console.error('[db] No se pudo leer el fichero de datos, empiezo vacío:', err.message);
-    db = { items: [], subscriptions: [], vapid: null, adminTokens: [] };
+    db = { trips: [], subscriptions: [], vapid: null, adminTokens: [] };
   }
 }
 
@@ -134,6 +143,52 @@ function cleanPrice(value) {
 }
 
 // ---------------------------------------------------------------------------
+// Compras (trips)
+// ---------------------------------------------------------------------------
+// Fecha "dd/mm/aaaa" para el título de la compra.
+function fechaES(d = new Date()) {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+// Crea una compra activa nueva (opcionalmente con artículos ya existentes).
+function makeTrip(items = []) {
+  const now = new Date();
+  return {
+    id: nextId(),
+    title: 'COMPRA ' + fechaES(now),
+    date: now.toISOString().slice(0, 10), // aaaa-mm-dd
+    status: 'active',
+    createdAt: now.toISOString(),
+    archivedAt: null,
+    items: Array.isArray(items) ? items : [],
+  };
+}
+
+// Devuelve la compra activa; si no hay ninguna, la crea.
+function getActiveTrip() {
+  let trip = db.trips.find((t) => t.status === 'active');
+  if (!trip) {
+    trip = makeTrip();
+    db.trips.push(trip);
+    saveDb();
+  }
+  return trip;
+}
+
+// Total (suma de precios) de una compra.
+function tripTotal(trip) {
+  const sum = trip.items.reduce((s, i) => s + (typeof i.price === 'number' ? i.price : 0), 0);
+  return Math.round(sum * 100) / 100;
+}
+
+// Busca un artículo dentro de la compra ACTIVA (las archivadas son de solo lectura).
+function findActiveItem(id) {
+  return getActiveTrip().items.find((i) => i.id === id);
+}
+
+// ---------------------------------------------------------------------------
 // Autenticación de Admin (la persona que va a comprar)
 // ---------------------------------------------------------------------------
 function isAdmin(req) {
@@ -166,12 +221,22 @@ app.get('/api/vapid-public-key', (req, res) => {
   res.json({ key: VAPID_PUBLIC_KEY, pushEnabled });
 });
 
-// Estado completo: lista de artículos.
+// Estado completo: todas las compras (activa + historial) con sus artículos.
 app.get('/api/state', (req, res) => {
-  res.json({ items: db.items, pushEnabled });
+  const active = getActiveTrip();
+  // Orden: la activa primero, luego las archivadas de más reciente a más antigua.
+  const trips = db.trips
+    .slice()
+    .sort((a, b) => {
+      if (a.status === 'active') return -1;
+      if (b.status === 'active') return 1;
+      return (b.archivedAt || b.createdAt).localeCompare(a.archivedAt || a.createdAt);
+    })
+    .map((t) => ({ ...t, total: tripTotal(t) }));
+  res.json({ trips, activeId: active.id, pushEnabled });
 });
 
-// Añadir un artículo a la lista.
+// Añadir un artículo a la compra activa.
 app.post('/api/items', (req, res) => {
   const person = cleanName(req.body.person);
   const text = cleanText(req.body.text);
@@ -187,17 +252,17 @@ app.post('/api/items', (req, res) => {
     price: null, // precio puesto por el Admin
     createdAt: new Date().toISOString(),
   };
-  db.items.push(item);
+  getActiveTrip().items.push(item);
   saveDb();
   res.status(201).json(item);
 });
 
-// Modificar un artículo.
+// Modificar un artículo de la compra activa.
 // - El texto lo puede editar cualquiera (corregir su propio artículo).
 // - El tick (checked), el precio y "comprado" (bought) son SOLO de Admin.
 app.patch('/api/items/:id', (req, res) => {
-  const item = db.items.find((i) => i.id === req.params.id);
-  if (!item) return res.status(404).json({ error: 'No encontrado.' });
+  const item = findActiveItem(req.params.id);
+  if (!item) return res.status(404).json({ error: 'No encontrado (¿es de una compra antigua?).' });
 
   if (typeof req.body.text === 'string') {
     const t = cleanText(req.body.text);
@@ -217,20 +282,13 @@ app.patch('/api/items/:id', (req, res) => {
   res.json(item);
 });
 
-// Borrar un artículo.
+// Borrar un artículo de la compra activa.
 app.delete('/api/items/:id', (req, res) => {
-  const before = db.items.length;
-  db.items = db.items.filter((i) => i.id !== req.params.id);
+  const trip = getActiveTrip();
+  const before = trip.items.length;
+  trip.items = trip.items.filter((i) => i.id !== req.params.id);
   saveDb();
-  res.json({ removed: before - db.items.length });
-});
-
-// Vaciar artículos ya comprados (limpieza tras la compra). Solo Admin.
-app.post('/api/clear-bought', requireAdmin, (req, res) => {
-  const before = db.items.length;
-  db.items = db.items.filter((i) => !i.bought);
-  saveDb();
-  res.json({ removed: before - db.items.length });
+  res.json({ removed: before - trip.items.length });
 });
 
 // ---------------------------------------------------------------------------
@@ -264,20 +322,39 @@ app.post('/api/admin/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// Marcar todo como comprado (al terminar la compra). Solo Admin.
+// Marcar todo como comprado dentro de la compra activa. Solo Admin.
 app.post('/api/admin/finish', requireAdmin, (req, res) => {
+  const trip = getActiveTrip();
   let count = 0;
-  let total = 0;
-  for (const item of db.items) {
+  for (const item of trip.items) {
     if (!item.bought) {
       item.bought = true;
       count += 1;
     }
-    if (typeof item.price === 'number') total += item.price;
   }
-  total = Math.round(total * 100) / 100;
   saveDb();
-  res.json({ marked: count, total });
+  res.json({ marked: count, total: tripTotal(trip) });
+});
+
+// Nueva compra: archiva la activa actual y empieza una nueva (con la fecha de hoy). Solo Admin.
+app.post('/api/admin/new-trip', requireAdmin, (req, res) => {
+  const current = getActiveTrip();
+  // Solo archivamos la compra actual si tiene contenido; si está vacía, la reutilizamos.
+  if (current.items.length) {
+    current.status = 'archived';
+    current.archivedAt = new Date().toISOString();
+    const fresh = makeTrip();
+    db.trips.push(fresh);
+    saveDb();
+    return res.json({ trip: fresh, archived: current.id });
+  }
+  // Estaba vacía: solo refrescamos su fecha a hoy.
+  const now = new Date();
+  current.title = 'COMPRA ' + fechaES(now);
+  current.date = now.toISOString().slice(0, 10);
+  current.createdAt = now.toISOString();
+  saveDb();
+  res.json({ trip: current, archived: null });
 });
 
 // Guardar una suscripción de notificaciones push.

@@ -1,17 +1,19 @@
-/* Lógica de la PWA "Shoply": lista de la compra compartida + modo Admin. */
+/* Lógica de la PWA "Shoply": compras con pestañas, totales por persona e historial. */
 
 const $ = (sel) => document.querySelector(sel);
 
 const state = {
   name: localStorage.getItem('compra:name') || '',
-  items: [],
+  trips: [],
+  activeId: null,
+  selectedId: null,
   pushEnabled: false,
   adminToken: localStorage.getItem('compra:adminToken') || '',
   isAdmin: false,
 };
 
 // Colores estables por nombre para los avatares.
-const AVATAR_COLORS = ['#16a34a', '#0ea5e9', '#8b5cf6', '#ef4444', '#f59e0b', '#ec4899', '#14b8a6', '#6366f1'];
+const AVATAR_COLORS = ['#12b886', '#0ea5e9', '#8b5cf6', '#ef4444', '#f59e0b', '#ec4899', '#14b8a6', '#6366f1'];
 function colorFor(name) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
@@ -46,8 +48,13 @@ async function api(path, opts = {}) {
 async function loadState() {
   try {
     const data = await api('/api/state');
-    state.items = data.items || [];
+    state.trips = data.trips || [];
+    state.activeId = data.activeId;
     state.pushEnabled = data.pushEnabled;
+    // Mantener la pestaña elegida; si no existe, ir a la activa.
+    if (!state.selectedId || !state.trips.find((t) => t.id === state.selectedId)) {
+      state.selectedId = state.activeId;
+    }
     render();
   } catch (e) {
     /* silencioso: reintenta en el siguiente poll */
@@ -66,10 +73,24 @@ async function checkAdmin() {
     state.isAdmin = false;
   }
   if (!state.isAdmin) {
-    // Token caducado (p. ej. tras un reinicio del servidor).
     state.adminToken = '';
     localStorage.removeItem('compra:adminToken');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Selección de compra (pestaña)
+// ---------------------------------------------------------------------------
+function selectedTrip() {
+  return state.trips.find((t) => t.id === state.selectedId) || state.trips.find((t) => t.id === state.activeId);
+}
+function isActiveSelected() {
+  const t = selectedTrip();
+  return !!t && t.id === state.activeId;
+}
+// ¿Puede el usuario editar lo que ve? Solo en la compra activa.
+function canEdit() {
+  return isActiveSelected();
 }
 
 // ---------------------------------------------------------------------------
@@ -78,29 +99,54 @@ async function checkAdmin() {
 function render() {
   $('#who-btn').textContent = '👤 ' + state.name;
 
-  // Estado de la interfaz de admin
+  const trip = selectedTrip();
+  const activeSel = isActiveSelected();
+  const adminOnActive = state.isAdmin && activeSel;
+
+  // Barra de admin: solo con sentido sobre la compra activa.
   document.body.classList.toggle('is-admin', state.isAdmin);
-  $('#admin-bar').classList.toggle('hidden', !state.isAdmin);
+  $('#admin-bar').classList.toggle('hidden', !adminOnActive);
   $('#admin-btn').classList.toggle('active', state.isAdmin);
   $('#admin-btn').textContent = state.isAdmin ? '🔓' : '🔒';
-  $('#clear-bought-btn').classList.toggle('hidden', !state.isAdmin);
 
-  if (state.isAdmin) {
-    const total = state.items.reduce((s, i) => s + (Number(i.price) || 0), 0);
-    $('#admin-total').textContent = 'Total: ' + euros(total);
+  // Solo se pueden añadir productos a la compra activa.
+  $('#add-form').classList.toggle('hidden', !activeSel);
+  $('#history-note').classList.toggle('hidden', activeSel);
+
+  if (adminOnActive && trip) {
+    $('#admin-total').textContent = 'Total: ' + euros(trip.total);
   }
 
+  renderTabs();
+  renderList(trip);
+}
+
+function renderTabs() {
+  const tabs = $('#tabs');
+  tabs.innerHTML = state.trips
+    .map((t) => {
+      const sel = t.id === state.selectedId ? 'sel' : '';
+      const isActive = t.id === state.activeId;
+      const label = isActive ? '🛒 ' + escapeHtml(t.title) : escapeHtml(t.title);
+      const total = t.total ? `<span class="tab-total">${euros(t.total)}</span>` : '';
+      return `<button class="tab ${sel} ${isActive ? 'is-active' : 'is-history'}" data-trip="${t.id}">${label}${total}</button>`;
+    })
+    .join('');
+}
+
+function renderList(trip) {
   const lists = $('#lists');
-  if (!state.items.length) {
-    lists.innerHTML = '<div class="empty">Aún no hay nada en la lista.<br>¡Añade lo primero! 👇</div>';
+  if (!trip || !trip.items.length) {
+    lists.innerHTML = isActiveSelected()
+      ? '<div class="empty">Aún no hay nada en esta compra.<br>¡Añade lo primero! 👇</div>'
+      : '<div class="empty">Esta compra no tiene productos.</div>';
+    $('#grand-total').classList.add('hidden');
     return;
   }
 
   // Agrupar por persona, con la del usuario primero.
   const groups = {};
-  for (const it of state.items) {
-    (groups[it.person] = groups[it.person] || []).push(it);
-  }
+  for (const it of trip.items) (groups[it.person] = groups[it.person] || []).push(it);
   const names = Object.keys(groups).sort((a, b) => {
     if (a === state.name) return -1;
     if (b === state.name) return 1;
@@ -108,81 +154,80 @@ function render() {
   });
 
   lists.innerHTML = names.map((name) => renderPerson(name, groups[name])).join('');
+
+  // Total de la compra (lo ve todo el mundo).
+  $('#grand-total').classList.remove('hidden');
+  $('#grand-total').innerHTML = `Total de la compra <strong>${euros(trip.total)}</strong>`;
 }
 
 function renderPerson(name, items) {
+  const subtotal = items.reduce((s, i) => s + (Number(i.price) || 0), 0);
   const pending = items.filter((i) => !i.bought).length;
   const rows = items.map(renderItem).join('');
   return `
     <div class="person-block">
       <div class="person-head">
         <span class="avatar" style="background:${colorFor(name)}">${initials(name)}</span>
-        <span>${escapeHtml(name)}${name === state.name ? ' (tú)' : ''}</span>
-        <span class="count">${pending} pend.</span>
+        <span class="person-name">${escapeHtml(name)}${name === state.name ? ' (tú)' : ''}</span>
+        <span class="person-subtotal">${euros(subtotal)}</span>
+        ${pending ? `<span class="count">${pending} pend.</span>` : '<span class="count done">✓</span>'}
       </div>
       ${rows}
     </div>`;
 }
 
 function renderItem(it) {
+  const editable = canEdit();
+  const admin = state.isAdmin && editable;
+
   const cls = ['item'];
   if (it.bought) cls.push('bought');
   if (it.checked) cls.push('checked');
 
-  // Marca de estado: en admin es pulsable (tick "en el carrito").
-  const mark = it.bought ? '✓' : it.checked ? '✓' : '';
+  const mark = it.bought || it.checked ? '✓' : '';
 
-  // Precio: editable solo en modo admin.
   let priceHtml = '';
-  if (state.isAdmin) {
+  if (admin) {
     priceHtml = `<input class="price-input" type="text" inputmode="decimal"
       value="${it.price != null ? String(it.price).replace('.', ',') : ''}"
-      placeholder="0,00" data-action="price" aria-label="Precio" />`;
+      placeholder="0,00 €" data-action="price" aria-label="Precio" />`;
   } else if (it.price != null) {
     priceHtml = `<span class="price-tag">${euros(it.price)}</span>`;
   }
+
+  const delBtn = editable ? `<button class="del" data-action="del" aria-label="Borrar">🗑️</button>` : '';
 
   return `
     <div class="item ${cls.join(' ')}" data-id="${it.id}">
       <div class="check" data-action="toggle">${mark}</div>
       <div class="text">${escapeHtml(it.text)}</div>
       ${priceHtml}
-      <button class="del" data-action="del" aria-label="Borrar">🗑️</button>
+      ${delBtn}
     </div>`;
 }
 
 // ---------------------------------------------------------------------------
-// Acciones de la lista
+// Acciones de la lista (solo compra activa)
 // ---------------------------------------------------------------------------
 async function addItem(text) {
   text = text.trim();
   if (!text) return;
-  await api('/api/items', {
-    method: 'POST',
-    body: JSON.stringify({ person: state.name, text }),
-  });
+  await api('/api/items', { method: 'POST', body: JSON.stringify({ person: state.name, text }) });
   await loadState();
 }
 
-// En modo admin, el tick marca "ya está en el carrito" (checked).
 async function toggleChecked(id, current) {
   if (!state.isAdmin) {
     toast('Solo quien va a la compra (Admin) puede marcar los productos.');
     return;
   }
-  await api('/api/items/' + id, {
-    method: 'PATCH',
-    body: JSON.stringify({ checked: !current }),
-  });
+  await api('/api/items/' + id, { method: 'PATCH', body: JSON.stringify({ checked: !current }) });
   await loadState();
 }
 
 async function setPrice(id, value) {
   try {
-    await api('/api/items/' + id, {
-      method: 'PATCH',
-      body: JSON.stringify({ price: value }),
-    });
+    await api('/api/items/' + id, { method: 'PATCH', body: JSON.stringify({ price: value }) });
   } catch (e) {
     toast('No se pudo guardar el precio.');
   }
@@ -194,26 +239,29 @@ async function deleteItem(id) {
   await loadState();
 }
 
-async function clearBought() {
-  try {
-    await api('/api/clear-bought', { method: 'POST' });
-    await loadState();
-  } catch (e) {
-    toast('Necesitas modo Admin para limpiar.');
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Finalizar compra (marcar todo como comprado)
+// Acciones de Admin sobre la compra
 // ---------------------------------------------------------------------------
 async function finishShopping() {
-  if (!confirm('¿Marcar TODA la lista como comprada?')) return;
+  if (!confirm('¿Marcar TODA la compra como comprada?')) return;
   try {
     const r = await api('/api/admin/finish', { method: 'POST' });
     await loadState();
-    toast(`✅ Compra finalizada. Total: ${euros(r.total)}`);
+    toast(`✅ Marcado como comprado. Total: ${euros(r.total)}`);
   } catch (e) {
     toast('No se pudo finalizar la compra.');
+  }
+}
+
+async function newTrip() {
+  if (!confirm('¿Empezar una compra nueva con la fecha de hoy?\nLa actual pasará al historial.')) return;
+  try {
+    await api('/api/admin/new-trip', { method: 'POST' });
+    state.selectedId = null; // se reposicionará en la nueva activa
+    await loadState();
+    toast('🛒 Nueva compra iniciada.');
+  } catch (e) {
+    toast('No se pudo crear la nueva compra.');
   }
 }
 
@@ -222,7 +270,6 @@ async function finishShopping() {
 // ---------------------------------------------------------------------------
 function openAdminModal() {
   if (state.isAdmin) {
-    // Ya es admin: el botón sirve para salir.
     adminLogout();
     return;
   }
@@ -231,19 +278,14 @@ function openAdminModal() {
   $('#admin-modal').classList.remove('hidden');
   setTimeout(() => $('#admin-password').focus(), 50);
 }
-
 function closeAdminModal() {
   $('#admin-modal').classList.add('hidden');
 }
-
 async function adminLogin() {
   const password = $('#admin-password').value;
   if (!password) return;
   try {
-    const r = await api('/api/admin/login', {
-      method: 'POST',
-      body: JSON.stringify({ password }),
-    });
+    const r = await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ password }) });
     state.adminToken = r.token;
     state.isAdmin = true;
     localStorage.setItem('compra:adminToken', r.token);
@@ -254,7 +296,6 @@ async function adminLogin() {
     $('#admin-error').textContent = '❌ Contraseña incorrecta.';
   }
 }
-
 async function adminLogout() {
   try {
     await api('/api/admin/logout', { method: 'POST' });
@@ -276,10 +317,7 @@ async function sendAlert() {
   btn.disabled = true;
   $('#alert-status').textContent = 'Enviando aviso…';
   try {
-    const r = await api('/api/alert', {
-      method: 'POST',
-      body: JSON.stringify({ person: state.name }),
-    });
+    const r = await api('/api/alert', { method: 'POST', body: JSON.stringify({ person: state.name }) });
     if (!r.pushEnabled) {
       $('#alert-status').textContent = '⚠️ Las notificaciones push no están configuradas en el servidor.';
     } else {
@@ -302,7 +340,6 @@ function urlBase64ToUint8Array(base64String) {
   const raw = atob(base64);
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
-
 async function enableNotifications() {
   const btn = $('#notif-btn');
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -328,10 +365,7 @@ async function enableNotifications() {
         applicationServerKey: urlBase64ToUint8Array(key),
       });
     }
-    await api('/api/subscribe', {
-      method: 'POST',
-      body: JSON.stringify({ person: state.name, subscription: sub }),
-    });
+    await api('/api/subscribe', { method: 'POST', body: JSON.stringify({ person: state.name, subscription: sub }) });
     localStorage.setItem('compra:notif', '1');
     btn.classList.add('active');
     btn.textContent = '🔔 Notificaciones activadas';
@@ -343,7 +377,7 @@ async function enableNotifications() {
 }
 
 // ---------------------------------------------------------------------------
-// Toast (aviso en pantalla)
+// Toast
 // ---------------------------------------------------------------------------
 let toastTimer = null;
 function toast(msg) {
@@ -366,14 +400,12 @@ function showApp() {
   }
   checkAdmin().then(loadState);
 }
-
 function showNameScreen() {
   $('#app-screen').classList.add('hidden');
   $('#name-screen').classList.remove('hidden');
   $('#name-input').value = state.name;
   $('#name-input').focus();
 }
-
 function saveName() {
   const v = $('#name-input').value.trim();
   if (!v) {
@@ -399,6 +431,7 @@ $('#admin-login').addEventListener('click', adminLogin);
 $('#admin-cancel').addEventListener('click', closeAdminModal);
 $('#admin-logout').addEventListener('click', adminLogout);
 $('#finish-btn').addEventListener('click', finishShopping);
+$('#new-trip-btn').addEventListener('click', newTrip);
 $('#admin-password').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') adminLogin();
 });
@@ -411,7 +444,15 @@ $('#add-form').addEventListener('submit', (e) => {
   input.focus();
 });
 
-// Delegación de eventos en la lista (tick / borrar).
+// Pestañas de compras.
+$('#tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab');
+  if (!btn) return;
+  state.selectedId = btn.dataset.trip;
+  render();
+});
+
+// Lista: tick / borrar.
 $('#lists').addEventListener('click', (e) => {
   const action = e.target.dataset.action;
   if (!action) return;
@@ -439,9 +480,8 @@ $('#lists').addEventListener('keydown', (e) => {
 
 $('#alert-btn').addEventListener('click', sendAlert);
 $('#notif-btn').addEventListener('click', enableNotifications);
-$('#clear-bought-btn').addEventListener('click', clearBought);
 
-// Mensajes desde el service worker (cuando llega un push con la app abierta).
+// Mensajes desde el service worker (push con la app abierta).
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (e) => {
     if (e.data && e.data.type === 'push') {
@@ -451,7 +491,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Recargar al volver a la pestaña.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && state.name) loadState();
 });
