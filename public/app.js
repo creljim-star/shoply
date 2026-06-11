@@ -114,6 +114,9 @@ function render() {
   $('#add-form').classList.toggle('hidden', !activeSel);
   $('#history-note').classList.toggle('hidden', activeSel);
 
+  // Borrar compra del historial: solo admin y solo en compras antiguas (no la activa).
+  $('#history-actions').classList.toggle('hidden', !(state.isAdmin && !activeSel && trip));
+
   if (adminOnActive && trip) {
     $('#admin-total').textContent = 'Total: ' + euros(trip.total);
   }
@@ -257,6 +260,20 @@ async function finishShopping() {
     toast(`✅ Marcado como comprado. Total: ${euros(r.total)}`);
   } catch (e) {
     toast('No se pudo finalizar la compra.');
+  }
+}
+
+async function deleteTrip(id) {
+  const trip = state.trips.find((t) => t.id === id);
+  const name = trip ? trip.title : 'esta compra';
+  if (!confirm(`¿Borrar "${name}" del historial?\nNo se puede deshacer.`)) return;
+  try {
+    await api('/api/trips/' + id, { method: 'DELETE' });
+    state.selectedId = null; // volver a la compra activa
+    await loadState();
+    toast('🗑️ Compra borrada del historial.');
+  } catch (e) {
+    toast('No se pudo borrar la compra.');
   }
 }
 
@@ -448,6 +465,7 @@ $('#admin-cancel').addEventListener('click', closeAdminModal);
 $('#admin-logout').addEventListener('click', adminLogout);
 $('#finish-btn').addEventListener('click', finishShopping);
 $('#new-trip-btn').addEventListener('click', newTrip);
+$('#del-trip-btn').addEventListener('click', () => deleteTrip(state.selectedId));
 $('#admin-password').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') adminLogin();
 });
