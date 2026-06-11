@@ -335,14 +335,13 @@ app.post('/api/admin/finish', requireAdmin, (req, res) => {
   res.json({ marked: count, total: tripTotal(trip) });
 });
 
-// Borrar una compra del HISTORIAL (no la activa). Solo Admin.
+// Borrar una compra (del historial o la activa). Solo Admin.
+// Si se borra la activa, getActiveTrip() crea una nueva vacía con la fecha de hoy.
 app.delete('/api/trips/:id', requireAdmin, (req, res) => {
   const trip = db.trips.find((t) => t.id === req.params.id);
   if (!trip) return res.json({ removed: 0 });
-  if (trip.status === 'active') {
-    return res.status(400).json({ error: 'No puedes borrar la compra activa.' });
-  }
   db.trips = db.trips.filter((t) => t.id !== req.params.id);
+  getActiveTrip(); // asegura que siempre quede una compra activa
   saveDb();
   res.json({ removed: 1 });
 });

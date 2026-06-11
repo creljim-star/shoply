@@ -324,15 +324,19 @@ async function finishShopping() {
 
 async function deleteTrip(id, skipConfirm) {
   const trip = state.trips.find((t) => t.id === id);
-  const name = trip ? trip.title : 'esta compra';
-  if (!skipConfirm && !confirm(`¿Borrar "${name}" del historial?\nNo se puede deshacer.`)) return;
+  const name = trip ? trip.title : 'esta lista';
+  const isActive = id === state.activeId;
+  const msg = isActive
+    ? `¿Vaciar y borrar la lista de hoy "${name}"?\nEmpezará una nueva vacía.`
+    : `¿Borrar la lista "${name}"?\nNo se puede deshacer.`;
+  if (!skipConfirm && !confirm(msg)) return;
   try {
     await api('/api/trips/' + id, { method: 'DELETE' });
     state.selectedId = null; // volver a la compra activa
     await loadState();
-    toast('🗑️ Lista borrada.');
+    toast(isActive ? '🗑️ Lista vaciada. Nueva compra iniciada.' : '🗑️ Lista borrada.');
   } catch (e) {
-    toast('No se pudo borrar (¿es la compra activa?).');
+    toast('No se pudo borrar la lista.');
   }
 }
 
@@ -351,8 +355,9 @@ function openTabMenu(id) {
   tabMenu.id = id;
   $('#tab-menu-title').textContent = trip.title;
   const isActive = id === state.activeId;
+  // La nota solo informa (en la de hoy); el botón de borrar se muestra siempre.
   $('#tab-menu-note').classList.toggle('hidden', !isActive);
-  $('#tab-menu-delete').classList.toggle('hidden', isActive);
+  $('#tab-menu-delete').classList.remove('hidden');
   $('#tab-menu').classList.remove('hidden');
   if (navigator.vibrate) navigator.vibrate(15); // vibración de confirmación
 }
@@ -615,7 +620,8 @@ tabsEl.addEventListener('click', (e) => {
 $('#tab-menu-delete').addEventListener('click', () => {
   const id = tabMenu.id;
   closeTabMenu();
-  if (id) deleteTrip(id, true);
+  // La de hoy pide confirmación extra (es la lista actual); las del historial, directo.
+  if (id) deleteTrip(id, id !== state.activeId);
 });
 $('#tab-menu-cancel').addEventListener('click', closeTabMenu);
 $('#tab-menu').addEventListener('click', (e) => {
